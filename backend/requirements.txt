@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pandas
+openpyxl
+llama-cpp-python
+faster-whisper
+# kokoro / kokoro-onnx 
+# (assuming kokoro-onnx is the standard way to run kokoro locally in python)
+kokoro-onnx
+soundfile
