@@ -8,11 +8,23 @@
 
 ---
 
+## 📥 Download the Standalone Application
+
+This GitHub repository only contains the **static frontend interface** and offline Simulator Mode.
+
+To run the complete, offline Retrieval-Augmented Generation (RAG) engine (which includes the pre-packaged 4GB DeepSeek AI model and all necessary Python environments), please download the standalone bundle from our secure R2 Bucket:
+
+[![Download Full Application](https://img.shields.io/badge/Download-Standalone_App_Bundle-blue?style=for-the-badge&logo=cloudflare)](https://your-r2-bucket-link.com/NHS_SBS_Portal.zip)
+
+*(Once downloaded, simply extract the ZIP and double-click `start.bat`)*
+
+---
+
 ## Overview
 
 This project is a fully offline, air-gapped Retrieval-Augmented Generation (RAG) portal designed to instantly index and query Clarification Questions (CQs) and extensive framework literature regarding the £900m NHS SBS AI Solutions Framework.
 
-## How to Run Locally (Windows)
+## How to Run the Developer Version Locally
 
 The entire backend intelligence and frontend routing is designed to run locally without external dependencies (aside from standard Python libraries).
 
