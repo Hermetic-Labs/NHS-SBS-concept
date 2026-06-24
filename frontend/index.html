@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NHS SBS Intelligence Viewer</title>
+    <!-- Add marked.js for static dumb lookup rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --bg-color: #050505;
@@ -140,13 +142,23 @@
         .viewer-content th { background-color: var(--surface-light); color: var(--primary); }
 
         /* RIGHT PANEL: Chat Assistant */
+        .resizer {
+            width: 4px;
+            background-color: var(--border);
+            cursor: col-resize;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        .resizer:hover, .resizer.active {
+            background-color: var(--primary);
+        }
+
         .panel-right {
-            width: 350px;
+            width: 400px;
             background-color: var(--surface-color);
-            border-left: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            transition: width 0.3s ease, transform 0.3s ease;
+            transition: transform 0.3s ease;
         }
 
         .panel-right.collapsed {
@@ -169,8 +181,8 @@
             max-width: 90%;
         }
 
-        .message.user { align-self: flex-end; }
-        .message.ai { align-self: flex-start; }
+        .message.user { align-self: flex-end; max-width: 85%; }
+        .message.ai { align-self: stretch; max-width: 98%; }
 
         .bubble {
             padding: 12px 16px;
@@ -307,6 +319,8 @@
             </div>
         </div>
 
+        <div class="resizer" id="resizerRight"></div>
+
         <!-- RIGHT PANEL: Chat -->
         <div class="panel-right" id="panelRight">
             <div class="header-bar">
@@ -346,7 +360,36 @@
         function togglePanel(id) {
             const el = document.getElementById(id);
             el.classList.toggle('collapsed');
+            if (id === 'panelRight') {
+                document.getElementById('resizerRight').style.display = el.classList.contains('collapsed') ? 'none' : 'block';
+            }
         }
+
+        // --- Resizer Logic ---
+        const resizer = document.getElementById('resizerRight');
+        const rightPanel = document.getElementById('panelRight');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            resizer.classList.add('active');
+            document.body.style.cursor = 'col-resize';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const newWidth = document.body.clientWidth - e.clientX;
+            rightPanel.style.width = Math.max(250, Math.min(800, newWidth)) + "px";
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizer.classList.remove('active');
+                document.body.style.cursor = 'default';
+            }
+        });
 
         // --- Document Viewer Logic ---
         async function fetchDocs() {
@@ -365,7 +408,92 @@
                     list.appendChild(item);
                 });
             } catch (e) {
-                document.getElementById('docList').innerHTML = '<div style="padding: 20px; color: red;">Failed to connect to backend spine.</div>';
+                console.warn("Backend unavailable, engaging static dumb lookup mode.");
+                const list = document.getElementById('docList');
+                list.innerHTML = '';
+                
+                // Static Fallback Documents
+                const fallbackDocs = [
+                    {title: "Bidder Clarification Qs BATCH 2", filename: "Bidder_Copy_Clarification_Qs_Healthcare_AI_SBS10525_BATCH 2_03_06_26.md"},
+                    {title: "Declaration of Interest", filename: "Healthcare AI Solutions Bidder Declarations Declaration of Interest.md"},
+                    {title: "Bidders Instructions and Guidance V2", filename: "Healthcare AI Solutions Bidders Instructions and Guidance V2.md"}
+                ];
+                
+                fallbackDocs.forEach(doc => {
+                    const item = document.createElement('div');
+                    item.className = 'doc-item';
+                    item.innerText = doc.title;
+                    item.onclick = () => loadDocStatic(doc.filename, item);
+                    list.appendChild(item);
+                });
+
+                // Add the Indexed JSON Database as a browseable room
+                const qnaBtn = document.createElement('div');
+                qnaBtn.className = 'doc-item';
+                qnaBtn.id = 'qnaBrowseBtn';
+                qnaBtn.innerHTML = '<span style="font-size: 1.1rem;">🗂️</span> <strong>Browse Q&A Database</strong>';
+                qnaBtn.onclick = () => loadStaticQA(qnaBtn);
+                list.appendChild(qnaBtn);
+            }
+        }
+
+        async function loadStaticQA(element, scrollToId = null) {
+            document.querySelectorAll('.doc-item').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+            
+            document.getElementById('viewerTitle').innerText = 'Q&A Database';
+            document.getElementById('viewerContent').innerHTML = '<div class="empty-state">Loading indexed Q&A dataset...</div>';
+            
+            try {
+                const res = await fetch(`../data/cq_index.json`);
+                if (!res.ok) throw new Error("Not found");
+                const data = await res.json();
+                
+                let html = `<div style="max-width: 900px; margin: 0 auto; padding-top: 20px; padding-bottom: 40px;">
+                    <h2 style="color: var(--primary); margin-top: 0; font-size: 1.5rem;">Local Clarification Database</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 30px; font-size: 0.95rem; line-height: 1.5;">Browsing <strong>${data.length}</strong> indexed records locally. Deep AI reasoning is currently disabled, but you have full static access to the framework literature.</p>
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                `;
+                
+                data.forEach((item, index) => {
+                    const q = item["Clarification Question"] || "";
+                    const a = item["NHS SBS Response"] || "";
+                    const messageId = item["Message ID"] || `CQ-${index+1}`;
+                    const safeId = messageId.replace(/\\s+/g, '-').replace(/[^a-zA-Z0-9\\-]/g, '');
+                    
+                    let cardStyle = "background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s ease;";
+                    if (scrollToId && scrollToId === messageId) {
+                        cardStyle = "background: rgba(0,94,184,0.08); border: 1px solid var(--primary); border-radius: 8px; padding: 20px; box-shadow: 0 0 20px var(--primary-glow); transition: all 0.3s ease;";
+                    }
+                    
+                    html += `
+                        <div id="card-${safeId}" style="${cardStyle}">
+                            <div style="color: var(--primary); font-size: 0.85rem; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">${messageId}</div>
+                            <div style="margin-bottom: 15px;">
+                                <strong style="color: var(--text-main); font-size: 0.95rem;">Bidder Question:</strong><br>
+                                <span style="color: #e0e0e0; line-height: 1.6; display: inline-block; margin-top: 8px; font-size: 0.9rem;">${q.replace(/\\n/g, '<br>')}</span>
+                            </div>
+                            <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 6px; border-left: 3px solid var(--primary);">
+                                <strong style="color: var(--text-main); font-size: 0.95rem;">NHS SBS Response:</strong><br>
+                                <span style="color: #aaa; line-height: 1.6; display: inline-block; margin-top: 8px; font-size: 0.9rem;">${a.replace(/\\n/g, '<br>')}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div></div>`;
+                document.getElementById('viewerContent').innerHTML = html;
+                
+                if (scrollToId) {
+                    const safeId = scrollToId.replace(/\\s+/g, '-').replace(/[^a-zA-Z0-9\\-]/g, '');
+                    setTimeout(() => {
+                        const target = document.getElementById('card-' + safeId);
+                        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                }
+                
+            } catch (e) {
+                document.getElementById('viewerContent').innerHTML = '<div class="empty-state" style="color:red;">Error loading local Q&A dataset.</div>';
             }
         }
 
@@ -383,6 +511,24 @@
                 document.getElementById('viewerContent').innerHTML = data.html;
             } catch (e) {
                 document.getElementById('viewerContent').innerHTML = '<div class="empty-state" style="color:red;">Error loading document.</div>';
+            }
+        }
+
+        async function loadDocStatic(filename, element) {
+            document.querySelectorAll('.doc-item').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+            
+            document.getElementById('viewerTitle').innerText = filename.replace('.md', '');
+            document.getElementById('viewerContent').innerHTML = '<div class="empty-state">Loading document...</div>';
+            
+            try {
+                const res = await fetch(`../data/markdown_docs/${filename}`);
+                if (!res.ok) throw new Error("Not found");
+                const text = await res.text();
+                // Render markdown via marked.js for dumb lookup
+                document.getElementById('viewerContent').innerHTML = marked.parse(text);
+            } catch (e) {
+                document.getElementById('viewerContent').innerHTML = '<div class="empty-state" style="color:red;">Error loading static document. Ensure the file exists in the data/documents folder.</div>';
             }
         }
 
@@ -488,8 +634,68 @@
                     chatHistory.scrollTop = chatHistory.scrollHeight;
                 }
             } catch (err) {
-                console.warn("Backend unavailable, falling back to Simulator Mode.", err);
-                aiBubble.innerHTML = `<em><strong>[SIMULATOR MODE]</strong> Live AI compute disabled on static hosting.</em><br><br><a href="#" style="display: inline-block; padding: 8px 16px; background-color: var(--primary); color: white; border-radius: 20px; text-decoration: none; font-size: 0.9rem; font-weight: bold;">Download the Working Repo</a>`;
+                console.warn("Backend unavailable, engaging static Javascript search.", err);
+                
+                // Static JS Search against the JSON Index
+                let searchResults = [];
+                const queryTerms = msg.toLowerCase().split(" ").filter(t => t.length > 2);
+                
+                if (queryTerms.length > 0) {
+                    try {
+                        const indexRes = await fetch('../data/cq_index.json');
+                        if (indexRes.ok) {
+                            const indexData = await indexRes.json();
+                            for (const item of indexData) {
+                                const q = item["Clarification Question"] || "";
+                                const a = item["NHS SBS Response"] || "";
+                                const combinedText = q.toLowerCase() + " " + a.toLowerCase();
+                                
+                                const matchTerm = queryTerms.find(term => combinedText.includes(term));
+                                if (matchTerm) {
+                                    let snippetQ = q.replace(/\\n|\\r/g, ' ').replace(/\\s+/g, ' ').trim();
+                                    let snippetA = a.replace(/\\n|\\r/g, ' ').replace(/\\s+/g, ' ').trim();
+                                    
+                                    if (snippetQ.length > 120) snippetQ = snippetQ.substring(0, 120) + "...";
+                                    if (snippetA.length > 120) snippetA = snippetA.substring(0, 120) + "...";
+                                    
+                                    searchResults.push({
+                                        title: item["Message ID"] || "Clarification Match",
+                                        q: snippetQ,
+                                        a: snippetA
+                                    });
+                                    if (searchResults.length >= 3) break;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Failed to load JSON index for static search", e);
+                    }
+                }
+
+                let responseHtml = '';
+                if (searchResults.length > 0) {
+                    responseHtml += `<div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 10px; color: var(--text-main);">Static Document Matches:</div><div style="display:flex; flex-direction:column; gap:10px;">`;
+                    searchResults.forEach(res => {
+                        const safeTitle = res.title.replace(/'/g, "\\\\'");
+                        responseHtml += `<div style="background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 6px; padding: 10px; word-wrap: break-word;">
+                            <div style="margin-bottom: 6px;">
+                                <a href="javascript:void(0)" onclick="loadStaticQA(document.getElementById('qnaBrowseBtn'), '${safeTitle}')" style="color: var(--primary); font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none;">${res.title} ↗</a>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #f0f0f0; line-height: 1.4; margin-bottom: 8px;"><strong>Q:</strong> "${res.q}"</div>
+                            <div style="font-size: 0.85rem; color: #ccc; line-height: 1.4;"><strong>A:</strong> "${res.a}"</div>
+                        </div>`;
+                    });
+                    responseHtml += `</div><br>`;
+                } else {
+                    responseHtml += `<em>No direct keyword matches found in static documents.</em><br><br>`;
+                }
+
+                responseHtml += `<div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px; font-size: 0.85rem; color: var(--text-muted);">
+                    <em><strong>[SIMULATOR MODE]</strong> Deep AI semantic reasoning disabled on static hosting.</em>
+                </div><br>
+                <a href="https://hermetic-labs-triage.s3.amazonaws.com/NHS_SBS_Portal_Desktop.zip" style="display: inline-block; padding: 8px 16px; background-color: var(--primary); color: white; border-radius: 20px; text-decoration: none; font-size: 0.9rem; font-weight: bold; text-align: center; width: 100%; box-sizing: border-box;">Download the Latest Version</a>`;
+                
+                aiBubble.innerHTML = responseHtml;
                 chatHistory.scrollTop = chatHistory.scrollHeight;
             } finally {
                 chatInput.disabled = false;
