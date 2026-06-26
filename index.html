@@ -359,7 +359,7 @@
         <!-- LEFT PANEL: Documents -->
         <div class="panel-left" id="panelLeft">
             <div class="header-bar" style="justify-content: flex-start; gap: 15px;">
-                <img src="http://127.0.0.1:7778/data/images/NHS logo.png" alt="NHS" style="height: 24px;">
+                <img src="./data/images/NHS%20logo.png" alt="NHS" style="height: 24px;">
                 <span style="font-size: 0.95rem; letter-spacing: 0.5px;">SBS Library</span>
             </div>
             
@@ -546,7 +546,7 @@
             document.getElementById('viewerContent').innerHTML = '<div class="empty-state">Loading indexed Q&A dataset...</div>';
             
             try {
-                const res = await fetch(`../data/cq_index.json`);
+                const res = await fetch(`./data/cq_index.json`);
                 if (!res.ok) throw new Error("Not found");
                 const data = await res.json();
                 
@@ -623,7 +623,7 @@
             document.getElementById('viewerContent').innerHTML = '<div class="empty-state">Loading document...</div>';
             
             try {
-                const res = await fetch(`../data/markdown_docs/${filename}`);
+                const res = await fetch(`./data/markdown_docs/${filename}`);
                 if (!res.ok) throw new Error("Not found");
                 const text = await res.text();
                 // Render markdown via marked.js for dumb lookup
