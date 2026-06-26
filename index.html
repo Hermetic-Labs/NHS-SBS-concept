@@ -6,6 +6,8 @@
     <title>NHS SBS Intelligence Viewer</title>
     <!-- Add marked.js for static dumb lookup rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Fuse.js for client-side fuzzy search in simulator mode -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
     <style>
         :root {
             --bg-color: #050505;
@@ -815,53 +817,37 @@
                 // Create bubble for static fallback
                 aiBubble = appendMessage('ai', '');
                 
-                // Static JS Search against the JSON Index
+                // Fuzzy semantic search via Fuse.js
                 let searchResults = [];
-                const rawQuery = msg.toLowerCase().trim();
-                // Keep all terms — don't drop numbers or short words
-                const queryTerms = rawQuery.split(/\s+/).filter(t => t.length > 0);
-                
-                if (queryTerms.length > 0) {
-                    try {
-                        const indexRes = await fetch('./data/cq_index.json');
-                        if (indexRes.ok) {
-                            const indexData = await indexRes.json();
-                            let scored = [];
-                            
-                            for (const item of indexData) {
-                                const q = item["Clarification Question"] || "";
-                                const a = item["NHS SBS Response"] || "";
-                                const combinedText = (q + " " + a).toLowerCase();
-                                
-                                // Score: full phrase match = 10 points, each individual term = 1 point
-                                let score = 0;
-                                if (combinedText.includes(rawQuery)) score += 10;
-                                for (const term of queryTerms) {
-                                    if (combinedText.includes(term)) score += 1;
-                                }
-                                
-                                if (score > 0) {
-                                    let snippetQ = q.replace(/\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
-                                    let snippetA = a.replace(/\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
-                                    if (snippetQ.length > 150) snippetQ = snippetQ.substring(0, 150) + "...";
-                                    if (snippetA.length > 150) snippetA = snippetA.substring(0, 150) + "...";
-                                    
-                                    scored.push({
-                                        title: item["Message ID"] || "Clarification Match",
-                                        q: snippetQ,
-                                        a: snippetA,
-                                        score: score
-                                    });
-                                }
-                            }
-                            
-                            // Sort by score descending and take top 5
-                            scored.sort((a, b) => b.score - a.score);
-                            searchResults = scored.slice(0, 5);
-                        }
-                    } catch (e) {
-                        console.warn("Failed to load JSON index for static search", e);
+                try {
+                    const indexRes = await fetch('./data/cq_index.json');
+                    if (indexRes.ok) {
+                        const indexData = await indexRes.json();
+                        const fuse = new Fuse(indexData, {
+                            keys: [
+                                { name: 'Clarification Question', weight: 0.6 },
+                                { name: 'NHS SBS Response', weight: 0.4 }
+                            ],
+                            threshold: 0.4,
+                            ignoreLocation: true,
+                            includeScore: true,
+                            minMatchCharLength: 2
+                        });
+                        const results = fuse.search(msg, { limit: 5 });
+                        searchResults = results.map(r => {
+                            let snippetQ = (r.item['Clarification Question'] || '').replace(/\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
+                            let snippetA = (r.item['NHS SBS Response'] || '').replace(/\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
+                            if (snippetQ.length > 150) snippetQ = snippetQ.substring(0, 150) + '...';
+                            if (snippetA.length > 150) snippetA = snippetA.substring(0, 150) + '...';
+                            return {
+                                title: r.item['Message ID'] || 'Clarification Match',
+                                q: snippetQ,
+                                a: snippetA
+                            };
+                        });
                     }
+                } catch (e) {
+                    console.warn('Fuse.js search failed', e);
                 }
 
                 let responseHtml = '';
