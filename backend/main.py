@@ -8,6 +8,12 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import numpy as np
 import markdown
+import sys
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.join(os.path.dirname(__file__), "..")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -23,11 +29,11 @@ app.add_middleware(
 )
 
 # Mount data folder for static media
-app.mount("/data", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "data")), name="data")
+app.mount("/data", StaticFiles(directory=os.path.join(BASE_DIR, "data")), name="data")
 
-DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "cq_index.json")
-DOCS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "markdown_docs")
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "deepseek-coder-6.7b-instruct.Q4_K_M.gguf")
+DATA_FILE = os.path.join(BASE_DIR, "data", "cq_index.json")
+DOCS_DIR = os.path.join(BASE_DIR, "data", "markdown_docs")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "deepseek-coder-6.7b-instruct.Q4_K_M.gguf")
 
 def load_data():
     if os.path.exists(DATA_FILE):

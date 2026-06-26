@@ -249,8 +249,109 @@
             text-align: center;
         }
 
+        /* ─── 3D Cube Loader ─────────────────────────────────────────────── */
+        .loader-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0 40px 0;
+            transition: opacity 0.4s ease, transform 0.4s ease, height 0.4s ease;
+            transform: scale(0);
+            opacity: 0;
+            height: 0;
+            width: 120px;
+            overflow: visible;
+            margin: 0;
+        }
+
+        .loader-container.active {
+            transform: scale(1);
+            opacity: 1;
+            height: 120px;
+            margin-bottom: 10px;
+        }
+
+        .loader-container.fade-out {
+            opacity: 0;
+            transform: scale(0.5);
+            height: 0;
+            margin-bottom: 0;
+            padding: 0;
+        }
+
+        .cube-scene {
+            perspective: 600px;
+            position: relative;
+            width: 60px;
+            height: 60px;
+        }
+
+        .nhs-cube {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: cube-spin 4s ease-in-out infinite;
+        }
+
+        @keyframes cube-spin {
+            0%, 17%   { transform: rotateX(-90deg) rotateY(  0deg); }
+            25%, 42%  { transform: rotateX(  0deg) rotateY( 90deg); }
+            50%, 67%  { transform: rotateX( 90deg) rotateY(  0deg); }
+            75%, 92%  { transform: rotateX(  0deg) rotateY(-90deg); }
+            100%      { transform: rotateX(-90deg) rotateY(  0deg); }
+        }
+
+        .cube-face {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #3d83c9 0%, #005EB8 50%, #003d75 100%);
+            color: white;
+            text-align: center;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+            backface-visibility: hidden;
+            overflow: hidden;
+        }
+
+        .cube-face.f-top    { transform: rotateX( 90deg) translateZ(30px); }
+        .cube-face.f-bottom { transform: rotateX(-90deg) translateZ(30px); }
+        .cube-face.f-front  { transform: rotateY(  0deg) translateZ(30px); }
+        .cube-face.f-back   { transform: rotateY(180deg) translateZ(30px); }
+        .cube-face.f-right  { transform: rotateY( 90deg) translateZ(30px); }
+        .cube-face.f-left   { transform: rotateY(270deg) translateZ(30px); }
+
+        .cube-text {
+            font-weight: 900;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            width: 100%;
+            text-align: center;
+        }
+
+        .cube-face .nhs-svg {
+            width: 80%;
+            height: auto;
+            border-radius: 2px;
+        }
+
+        .cube-ground {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translate(-50%, 10px);
+            width: 55px;
+            height: 9px;
+            background: radial-gradient(ellipse at center, rgba(0, 94, 184, 0.28), rgba(0, 94, 184, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+        }
     </style>
-</head>
 <body>
 
     <div class="app-container">
@@ -614,7 +715,39 @@
             chatInput.disabled = true;
             sendBtn.innerText = 'Thinking...';
             
-            const aiBubble = appendMessage('ai', '');
+            // Inject the loader standalone into chatHistory (no bubble)
+            const loaderDiv = document.createElement('div');
+            loaderDiv.className = 'loader-container';
+            loaderDiv.id = 'aiLoader';
+            loaderDiv.style.margin = '20px auto'; // Center it visually in the chat log
+            loaderDiv.innerHTML = `
+                <div class="cube-scene">
+                    <div class="nhs-cube">
+                        <!-- Faces in view order: Top, Left, Bottom, Right -->
+                        <div class="cube-face f-top">
+                            <svg class="nhs-svg" viewBox="0 0 100 28" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="100" height="28" fill="#005EB8"/>
+                                <text x="6" y="21" font-family="Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="20" fill="#FFFFFF" letter-spacing="0.6">NHS</text>
+                            </svg>
+                        </div>
+                        <div class="cube-face f-left"><div class="cube-text">Thinking</div></div>
+                        <div class="cube-face f-bottom"><div class="cube-text">Processing</div></div>
+                        <div class="cube-face f-right"><div class="cube-text">Care</div></div>
+                        <div class="cube-face f-front"></div>
+                        <div class="cube-face f-back"></div>
+                    </div>
+                    <div class="cube-ground"></div>
+                </div>
+            `;
+            chatHistory.appendChild(loaderDiv);
+            
+            // Trigger animation scale 0 -> 1
+            requestAnimationFrame(() => {
+                loaderDiv.classList.add('active');
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            });
+            
+            let aiBubble = null;
 
             try {
                 const res = await fetch(`${API_BASE}/api/chat`, {
@@ -625,16 +758,45 @@
                 
                 const reader = res.body.getReader();
                 const decoder = new TextDecoder();
+                let isFirstChunk = true;
                 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    aiBubble.innerText += chunk;
-                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                    
+                    if (isFirstChunk) {
+                        loaderDiv.classList.remove('active');
+                        loaderDiv.classList.add('fade-out');
+                        isFirstChunk = false;
+                        
+                        // Wait for transition before removing completely to avoid jump
+                        setTimeout(() => {
+                            if(loaderDiv && loaderDiv.parentNode) loaderDiv.parentNode.removeChild(loaderDiv);
+                        }, 400);
+                        
+                        // Create the AI bubble only when text starts streaming
+                        aiBubble = appendMessage('ai', '');
+                    }
+
+                    if (aiBubble) {
+                        const chunk = decoder.decode(value, { stream: true });
+                        aiBubble.innerText += chunk;
+                        chatHistory.scrollTop = chatHistory.scrollHeight;
+                    }
                 }
             } catch (err) {
                 console.warn("Backend unavailable, engaging static Javascript search.", err);
+                
+                if (loaderDiv) {
+                    loaderDiv.classList.remove('active');
+                    loaderDiv.classList.add('fade-out');
+                    setTimeout(() => {
+                        if(loaderDiv && loaderDiv.parentNode) loaderDiv.parentNode.removeChild(loaderDiv);
+                    }, 400);
+                }
+                
+                // Create bubble for static fallback
+                aiBubble = appendMessage('ai', '');
                 
                 // Static JS Search against the JSON Index
                 let searchResults = [];
@@ -693,9 +855,12 @@
                 responseHtml += `<div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px; font-size: 0.85rem; color: var(--text-muted);">
                     <em><strong>[SIMULATOR MODE]</strong> Deep AI semantic reasoning disabled on static hosting.</em>
                 </div><br>
-                <a href="https://hermetic-labs-triage.s3.amazonaws.com/NHS_SBS_Portal_Desktop.zip" style="display: inline-block; padding: 8px 16px; background-color: var(--primary); color: white; border-radius: 20px; text-decoration: none; font-size: 0.9rem; font-weight: bold; text-align: center; width: 100%; box-sizing: border-box;">Download the Latest Version</a>`;
+                <a href="https://hermeticlabs9f36.blob.core.windows.net/sbs-demo/NHS_SBS_Portal_Desktop.zip" style="display: inline-block; padding: 8px 16px; background-color: var(--primary); color: white; border-radius: 20px; text-decoration: none; font-size: 0.9rem; font-weight: bold; text-align: center; width: 100%; box-sizing: border-box;">Download the Latest Version</a>`;
                 
-                aiBubble.innerHTML = responseHtml;
+                
+                if (aiBubble) {
+                    aiBubble.innerHTML = responseHtml;
+                }
                 chatHistory.scrollTop = chatHistory.scrollHeight;
             } finally {
                 chatInput.disabled = false;
