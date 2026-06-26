@@ -803,7 +803,7 @@
                 
                 if (queryTerms.length > 0) {
                     try {
-                        const indexRes = await fetch('../data/cq_index.json');
+                        const indexRes = await fetch('./data/cq_index.json');
                         if (indexRes.ok) {
                             const indexData = await indexRes.json();
                             for (const item of indexData) {
