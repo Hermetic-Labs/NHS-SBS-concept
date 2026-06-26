@@ -1,50 +1,46 @@
-# NHS SBS CQ Portal - Healthcare AI Solutions Framework (Lot 7)
+# NHS SBS Healthcare AI Solutions — Intelligence Viewer
 
-> **⚠️ DEMONSTRATIVE PROTOTYPE**
-> 
-> This portal and its underlying architecture are provided for **demonstrative purposes only** as a practical example of consultancy and technical services for the **NHS SBS10523 Healthcare AI Solutions Framework (Lot 7) bid**. 
-> 
-> While the framework information is public, this specific repository is **not** intended for mass production deployment or active healthcare distribution. All code, AI logic, and interfaces herein are tailored to showcase rapid AI prototyping, offline RAG capabilities, and modern UI implementation for NHS evaluation.
+A lightweight, static intelligence viewer for the NHS SBS Healthcare AI Solutions framework (SBS10525). Browse clarification documents, Q&A databases, and media guides — all from a single page with zero backend required.
+
+## Live Site
+
+**[hermetic-labs.github.io/NHS-SBS-concept](https://hermetic-labs.github.io/NHS-SBS-concept/)**
+
+## What's Here
+
+| Path | Purpose |
+|------|---------|
+| `index.html` | The full single-page application (dark/light theme, document viewer, AI chat shell) |
+| `data/cq_index.json` | Indexed clarification Q&A dataset for local keyword search |
+| `data/markdown_docs/` | Framework literature rendered as browseable markdown |
+| `data/images/` | Static assets (NHS logo) |
+
+## Modes
+
+### Simulator Mode (Static Hosting)
+When served from GitHub Pages (or any static host), the viewer runs entirely client-side:
+- **Document browsing** — Markdown docs rendered via `marked.js`
+- **Q&A database** — Keyword search across the indexed clarification dataset
+- **Media & guides** — Embedded video walkthroughs and webinar recordings
+
+### Full Mode (Local Backend)
+When paired with the local Python backend and desktop app, unlocks:
+- **Deep AI semantic reasoning** powered by local LLM inference
+- **Streaming chat responses** with context-aware document retrieval
+- **Signed desktop installer** available via the download button
+
+## Desktop App
+
+The signed Windows desktop application bundles the full backend + AI engine. It is built locally with Tauri and signed via Azure Trusted Signing.
+
+**Download:** Available through the chat interface on the live site, or directly from [Azure Blob Storage](https://hermeticlabs9f36.blob.core.windows.net/sbs-demo/desktop_app_0.1.0_x64-setup.exe).
+
+> Desktop app source code is maintained locally and not tracked in this repository. This repo serves exclusively as the thin, public-facing static shell.
+
+## Deployment
+
+This site is deployed automatically via GitHub Actions on every push to `master`. See [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
 
 ---
 
-## 📥 Download the Standalone Application
-
-This GitHub repository only contains the **static frontend interface** and offline Simulator Mode.
-
-To run the complete, offline Retrieval-Augmented Generation (RAG) engine (which includes the pre-packaged 4GB DeepSeek AI model and all necessary Python environments), please download the standalone bundle from our secure R2 Bucket:
-
-[![Download Full Application](https://img.shields.io/badge/Download-Standalone_App_Bundle-blue?style=for-the-badge&logo=cloudflare)](https://your-r2-bucket-link.com/NHS_SBS_Portal.zip)
-
-*(Once downloaded, simply extract the ZIP and double-click `start.bat`)*
-
----
-
-## Overview
-
-This project is a fully offline, air-gapped Retrieval-Augmented Generation (RAG) portal designed to instantly index and query Clarification Questions (CQs) and extensive framework literature regarding the £900m NHS SBS AI Solutions Framework.
-
-## How to Run the Developer Version Locally
-
-The entire backend intelligence and frontend routing is designed to run locally without external dependencies (aside from standard Python libraries).
-
-1. Clone or download this repository to your local machine.
-2. Double-click the `start.bat` file in the root directory.
-3. The batch script will automatically:
-   - Establish the Python Virtual Environment (`venv`)
-   - Install any missing pip requirements
-   - Boot the local FastAPI server (`http://127.0.0.1:7778`)
-   - Launch your default web browser directly into the portal.
-
-## Notice for Apple / Mac Users
-
-The automated startup script (`start.bat`) is currently configured for Windows environments. 
-
-For the Apple crowd, to achieve native app-like execution without terminal commands, you may wrap this frontend web architecture in **Capacitor** (or Electron). Alternatively, you can run the backend manually via terminal:
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python backend/main.py
-```
-*(Once the backend is running, simply open `frontend/index.html` in Safari/Chrome).*
+Built by [Hermetic Labs](https://hermeticlabs.com)

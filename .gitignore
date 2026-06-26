@@ -1,22 +1,33 @@
+# ── Python ──────────────────────────────────────
 venv/
 __pycache__/
-*.zip
-models/
+*.pyc
 .env
+flatten_db.py
 
-# Python build artifacts
+# ── Backend (not part of the thin shell) ────────
+backend/
+scripts/
+models/
 build/
 staging/
 main.spec
-
-# Backend and heavy assets (Not tracked in the thin shell repo)
-backend/
-scripts/
-flatten_db.py
-bundle.bat
 start.bat
-desktop_app/src-tauri/bin/*.exe
+bundle.bat
 
-# API / Node artifacts
+# ── Desktop App (built locally, not tracked) ────
+desktop_app/
+
+# ── Heavy data files ────────────────────────────
+frontend/flattened_db.json
+*.zip
+
+# ── Internal docs (not public-facing) ───────────
+docs/
+README_EVALUATION.md
+
+# ── Build artifacts & logs ──────────────────────
 node_modules/
 .wrangler/
+*.log
+sign_debug.log
