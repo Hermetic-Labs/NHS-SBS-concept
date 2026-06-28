@@ -951,7 +951,13 @@
             try {
                 const res = await fetch(`${API_BASE}/api/logs`);
                 const data = await res.json();
-                document.getElementById('logsContent').innerHTML = data.logs.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                
+                if (data && typeof data.logs === 'string') {
+                    document.getElementById('logsContent').innerHTML = data.logs.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                } else {
+                    document.getElementById('logsContent').innerHTML = `Server responded with an error or unexpected format: ${JSON.stringify(data)}`;
+                }
+                
                 const logsContent = document.getElementById('logsContent');
                 logsContent.scrollTop = logsContent.scrollHeight;
             } catch (err) {
