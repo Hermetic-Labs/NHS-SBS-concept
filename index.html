@@ -447,7 +447,6 @@
                 <button class="toggle-btn" onclick="togglePanel('panelLeft')">☰ Library</button>
                 <div id="viewerTitle" style="font-weight: 600; color: var(--text-main); font-size: 1.1rem;"></div>
                 <div style="display: flex; gap: 10px;">
-                    <button class="toggle-btn" onclick="showLogsModal()">📄 Logs</button>
                     <button class="toggle-btn" onclick="toggleTheme()">◑ Theme</button>
                     <button class="toggle-btn" onclick="togglePanel('panelRight')">✧ AI Assistant ☰</button>
                 </div>
@@ -523,7 +522,8 @@
     </div>
 
     <script>
-        const API_BASE = 'http://127.0.0.1:7778';
+        // Force simulator fallback on web build by using an invalid protocol
+        const API_BASE = 'simulator://local';
 
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute("data-theme");
@@ -942,25 +942,7 @@
             }
         }
 
-        async function showLogsModal() {
-            document.getElementById('logsModal').style.display = 'flex';
-            document.getElementById('logsContent').innerHTML = 'Fetching logs...';
-            try {
-                const res = await fetch(`${API_BASE}/api/logs`);
-                const data = await res.json();
-                
-                if (data && typeof data.logs === 'string') {
-                    document.getElementById('logsContent').innerHTML = data.logs.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                } else {
-                    document.getElementById('logsContent').innerHTML = `Server responded with an error or unexpected format: ${JSON.stringify(data)}`;
-                }
-                
-                const logsContent = document.getElementById('logsContent');
-                logsContent.scrollTop = logsContent.scrollHeight;
-            } catch (err) {
-                document.getElementById('logsContent').innerHTML = 'Error fetching logs: ' + err;
-            }
-        }
+
 
         async function showUninstallModal() {
             document.getElementById('uninstallModal').style.display = 'flex';
@@ -1023,18 +1005,6 @@
             <span style="font-size: 0.6rem; color: rgba(255,255,255,0.15);">© 2026 Hermetic Labs LLC · Ltd · OÜ</span>
         </div>
     </footer>
-
-    <!-- Logs Modal -->
-    <div class="modal-overlay" id="logsModal">
-        <div class="modal-content" style="max-width: 800px; width: 95%;">
-            <h2 style="color: var(--text-main);">Backend Logs</h2>
-            <div class="path-list" id="logsContent" style="max-height: 400px; white-space: pre-wrap; font-size: 0.75rem;">Fetching logs...</div>
-            <div class="modal-actions">
-                <button class="modal-btn cancel" onclick="document.getElementById('logsModal').style.display='none'">Close</button>
-                <button class="modal-btn confirm" style="background: var(--primary);" onclick="showLogsModal()">Refresh</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Uninstall Modal -->
     <div class="modal-overlay" id="uninstallModal">
