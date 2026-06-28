@@ -413,7 +413,8 @@
     </style>
 <body>
 
-    <div style="
+    <div id="simulatorBanner" style="
+        display: none;
         background: rgba(0,94,184,0.12);
         border-bottom: 1px solid rgba(0,94,184,0.25);
         padding: 6px 20px;
@@ -449,6 +450,7 @@
                 <div style="display: flex; gap: 10px;">
                     <button class="toggle-btn" onclick="showLogsModal()">📄 Logs</button>
                     <button class="toggle-btn" onclick="toggleTheme()">◑ Theme</button>
+                    <button class="toggle-btn" style="color: #ff4444; border-color: #ff4444;" onclick="showUninstallModal()">✕ Uninstall</button>
                     <button class="toggle-btn" onclick="togglePanel('panelRight')">✧ AI Assistant ☰</button>
                 </div>
             </div>
@@ -586,6 +588,7 @@
                 });
             } catch (e) {
                 console.warn("Backend unavailable, engaging static dumb lookup mode.");
+                document.getElementById('simulatorBanner').style.display = 'block';
                 const list = document.getElementById('docList');
                 list.innerHTML = '';
                 
